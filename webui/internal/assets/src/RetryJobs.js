@@ -72,6 +72,8 @@ export default class RetryJobs extends React.Component {
                 <th>Name</th>
                 <th>Arguments</th>
                 <th>Error</th>
+                <th>Enqueued At</th>
+                <th>Failed At</th>
                 <th>Retry At</th>
               </tr>
               {
@@ -81,7 +83,9 @@ export default class RetryJobs extends React.Component {
                       <td>{job.name}</td>
                       <td>{JSON.stringify(job.args)}</td>
                       <td>{job.err}</td>
-                      <td><UnixTime ts={job.t} /></td>
+                      <td><UnixTime ts={job.enqueued_at} /></td>
+                      <td><UnixTime ts={job.failed_at} /></td>
+                      <td><UnixTime ts={job.retry_at} /></td>
                     </tr>
                   );
                 })

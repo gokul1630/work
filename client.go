@@ -281,7 +281,8 @@ func (c *Client) Queues() ([]*Queue, error) {
 
 // RetryJob represents a job in the retry queue.
 type RetryJob struct {
-	RetryAt int64 `json:"retry_at"`
+	RetryAt    int64 `json:"retry_at"`
+	EnqueuedAt int64 `json:"enqueued_at"`
 	*Job
 }
 
@@ -327,7 +328,7 @@ func (c *Client) RetryJobs(page uint) ([]*RetryJob, int64, error) {
 	jobs := make([]*RetryJob, 0, len(jobsWithScores))
 
 	for _, jws := range jobsWithScores {
-		jobs = append(jobs, &RetryJob{RetryAt: jws.Score, Job: jws.job})
+		jobs = append(jobs, &RetryJob{RetryAt: jws.Score, Job: jws.job, EnqueuedAt: jws.job.EnqueuedAt})
 	}
 
 	return jobs, count, nil
