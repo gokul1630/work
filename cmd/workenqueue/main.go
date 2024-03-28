@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gocraft/work"
+	"github.com/gokul1630/work"
 	"github.com/gomodule/redigo/redis"
 )
 
