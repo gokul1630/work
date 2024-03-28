@@ -1,6 +1,7 @@
 package work
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -96,6 +97,49 @@ func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[stri
 	}
 
 	return scheduledJob, nil
+}
+
+func (e *Enqueuer) Dequeue(jobName string, oldArgs map[string]interface{}) error {
+
+	args, err := json.Marshal(oldArgs)
+	if err != nil {
+		return err
+	}
+
+	conn := e.Pool.Get()
+	defer conn.Close()
+
+	cursor := 0
+
+	for {
+
+		response, err := redis.Values(conn.Do("ZSCAN", redisKeyScheduled(e.Namespace), cursor, "MATCH", string(args)))
+		if err != nil {
+			return err
+		}
+
+		var (
+			nextCursor int
+			members    []string
+		)
+		_, err = redis.Scan(response, &nextCursor, &members)
+		if err != nil {
+			return err
+		}
+
+		for _, member := range members {
+			if _, err := conn.Do("ZREM", redisKeyScheduled(e.Namespace), member); err != nil {
+				return err
+			}
+		}
+
+		cursor = nextCursor
+
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
 }
 
 // EnqueueUnique enqueues a job unless a job is already enqueued with the same name and arguments.
