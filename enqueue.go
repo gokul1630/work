@@ -2,6 +2,7 @@ package work
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -112,8 +113,7 @@ func (e *Enqueuer) Dequeue(jobName string, oldArgs map[string]interface{}) error
 	cursor := 0
 
 	for {
-
-		response, err := redis.Values(conn.Do("ZSCAN", redisKeyScheduled(e.Namespace), cursor, "MATCH", string(args)))
+		response, err := redis.Values(conn.Do("ZSCAN", redisKeyScheduled(e.Namespace), cursor, "MATCH", fmt.Sprintf("*%s*", string(args))))
 		if err != nil {
 			return err
 		}
