@@ -1,6 +1,7 @@
 package work
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -67,10 +68,11 @@ func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, e
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
 func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
 	job := &Job{
-		Name:       jobName,
-		ID:         makeIdentifier(),
-		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
+		Name:        jobName,
+		ID:          makeIdentifier(),
+		EnqueuedAt:  nowEpochSeconds(),
+		EnqueuedFor: secondsFromNow,
+		Args:        args,
 	}
 
 	rawJSON, err := job.serialize()
@@ -96,6 +98,44 @@ func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[stri
 	}
 
 	return scheduledJob, nil
+}
+
+func (e *Enqueuer) Dequeue(jobName string, oldSecondsFromNow int64) error {
+
+	conn := e.Pool.Get()
+	defer conn.Close()
+
+	cursor := 0
+
+	for {
+
+		response, err := redis.Values(conn.Do("ZSCAN", redisKeyScheduled(e.Namespace), cursor, "MATCH", fmt.Sprintf("*%d*", oldSecondsFromNow)))
+		if err != nil {
+			return err
+		}
+
+		var (
+			nextCursor int
+			members    []string
+		)
+		_, err = redis.Scan(response, &nextCursor, &members)
+		if err != nil {
+			return err
+		}
+
+		for _, member := range members {
+			if _, err := conn.Do("ZREM", redisKeyScheduled(e.Namespace), member); err != nil {
+				return err
+			}
+		}
+
+		cursor = nextCursor
+
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
 }
 
 // EnqueueUnique enqueues a job unless a job is already enqueued with the same name and arguments.
