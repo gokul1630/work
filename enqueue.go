@@ -1,7 +1,7 @@
 package work
 
 import (
-	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -99,12 +99,7 @@ func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[stri
 	return scheduledJob, nil
 }
 
-func (e *Enqueuer) Dequeue(jobName string, oldArgs map[string]interface{}) error {
-
-	args, err := json.Marshal(oldArgs)
-	if err != nil {
-		return err
-	}
+func (e *Enqueuer) Dequeue(jobName, jobId string) error {
 
 	conn := e.Pool.Get()
 	defer conn.Close()
@@ -112,8 +107,7 @@ func (e *Enqueuer) Dequeue(jobName string, oldArgs map[string]interface{}) error
 	cursor := 0
 
 	for {
-
-		response, err := redis.Values(conn.Do("ZSCAN", redisKeyScheduled(e.Namespace), cursor, "MATCH", string(args)))
+		response, err := redis.Values(conn.Do("ZSCAN", redisKeyScheduled(e.Namespace), cursor, "MATCH", fmt.Sprintf("*%s*", jobId)))
 		if err != nil {
 			return err
 		}
